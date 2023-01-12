@@ -1,0 +1,319 @@
+#include "headers/mainwindow.h"
+#include "ui_mainwindow.h"
+#include "headers/constants.h"
+#include "headers/board.h"
+#include "headers/custombutton_box.h"
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+<<<<<<< HEAD
+void MainWindow::receivePlayer(Player myPlayer)
+{
+    ui->nameLabel->setText(myPlayer.getName());        // postavljamo vrednost labele za ime igraca
+    ui->scoreLabel->setText("Score: " + QString::number(myPlayer.getScore()));      // postavljamo vrednost labele za rezultat igraca
+
+    QString cards = myPlayer.getHand();    // karte iz ruke igraca
+    // resetujemo mrezu
+    QLayoutItem* item;
+    ui->hand_gridLayout->setSpacing(3);
+
+    while ((item = ui->hand_gridLayout->takeAt(0)) != NULL)
+    {
+        // da ne bi doslo do curenja memorije
+        delete item->widget();
+        delete item;
+    }
+
+    // za svaku kartu
+    for (int i = 0; i < cards.length(); i++)
+    {
+        CustomButton_Card *button = new CustomButton_Card();  // pravim to dugme koje zapravo predstavlja kartu(klasu je radila Jelena, faajlove cu prilikom spajanja dobiti, a ovo bi trebalo da je dobro, do tada)
+        button->setFixedSize(QSize(70, 80));             // dimenzija dugmeta
+        button->setLetter(cards[i]);                   // i slovo koje je vezano za dugme
+
+        QString image_path = "";        // sad na oslovu slova, adekvatna slika
+        // ako je dzoker
+        if (cards[i] == '*')
+            image_path = ":/images/Wildcard.png";
+        else   // ako je slovo
+            image_path = ":/images/" + cards[i] + ".png";
+        setCardImage(button,image_path);       // postavljamo sliku
+
+        // postavljam karte u dva reda sa po cetiri kolone
+        if (i < 4)
+            ui->hand_gridLayout->addWidget(button, 0, i);
+        else
+            ui->hand_gridLayout->addWidget(button, 1, i-4);
+        button->setCheckable(true);         // postavljamo svojstvo checkable
+
+        button->show();         // i zaista prikazujem dugme
+    }
+    // Skriveno dugme koje ce sluziti da se onemoguci izbor vec odigranih karata
+    CustomButton_Card *tmp = new CustomButton_Card();
+    tmp->setObjectName("hidden");
+    tmp->setCheckable(true);
+    tmp->setVisible(false);
+    ui->hand_gridLayout->addWidget(tmp);
+}
+
+void setCardImage(CustomButton_Card *button, QString imagePath)  {
+    QPixmap backgroundButton(imagePath);
+    backgroundButton = backgroundButton.scaled(button->size(), Qt::IgnoreAspectRatio);
+    QPalette paletteButton;
+    paletteButton.setBrush(QPalette::Button, backgroundButton);
+    button->setFlat(true);
+    button->setAutoFillBackground(true);
+    button->setPalette(paletteButton);
+}
+
+
+void MainWindow::createBoard(Board myBoard)
+{
+    isFirstLetter = true;              // indikator prvog slova(vvaznoo za scoreboard)
+    isFirstTurn = true;
+    previous_x = -1;
+    previous_y = -1;
+    // x i y se koriste za skladistenje koordinata
+    int x = 0;
+    int y = 0;
+
+    Constants *c = new Constants();         // deklaracija objekta klase Legenda
+
+    // prolazimo kroz polja
+    for (auto element : myBoard.getField())
+    {
+        for (auto e : element)
+        {
+            CustomButton_box *button = new CustomButton_box();      // deklaracija novo dugmeta, koje ce ici na layout
+
+            // postavljene informacije u svoj objekat
+            button->setCoord_x(x);      // koordinate
+            button->setCoord_y(y);
+            button->setBox(e);      // tip kutije
+            button->setLetter(' ');    // slovo (u pocetku prazno)
+            button->setIsWildcard(false);  // ne sadrzi WildCard
+            button->setIsNew(false);    // postavljamo na false, jer nema novog slova
+
+            button->setFixedSize(QSize(40,40));         // postavljamo dimenzije
+
+
+            ui->board_gridLayout->addWidget(button,button->getCoord_y(),button->getCoord_x());
+
+            QString image_path = "";        // u zavisnosti od vrste polja dodajemo odgovarajucu sliku
+            switch(button->getBox())
+            {
+                case (Constants::EMPTY):
+                {
+                    image_path = ":/resources/images/white.jpg";
+                    break;
+                }
+            case (Constants::WORDx2):
+                {
+                    image_path = ":/resources/images/doubleWordScore.jpg";
+                    break;
+                }
+            case (Constants::WORDx3):
+                {
+                    image_path = ":/resources/images/tripleWordScore.jpg";
+                    break;
+                }
+            case (Constants::LETTERx2):
+                {
+                    image_path = ":/resources/images/doubleLetterScore.jpg";
+                    break;
+                }
+            case (Constants::LETTERx3):
+                {
+                    image_path = ":/resources/images/tripleLetterScore.jpg";
+                    break;
+                }
+            }
+            setBoxImage(button,image_path);        //dodajemo sliku
+
+            // povezivanje signala i slotova
+            QObject::connect(button, SIGNAL(clicked()),
+                             button, SLOT(handle_clicked()));
+            QObject::connect(button, SIGNAL(send_clicked()),
+                             this, SLOT(receiveClickedButton()));
+
+            // u pocetku samo sredisnje dugme moze da se pritisne
+            if ((x == y) && (x == c->LEN_X/2))
+                button->setEnabled(true);
+            else
+                button->setEnabled(false);
+
+            button->show();         // prikazujemo dugme
+            x++;                    //uvecavamo brojac x
+        }
+        y++;                        // uvecavamo brojac y
+        x = 0;                      // resetujemo x
+    }
+}
+
+void MainWindow::receiveBoard(Board board)
+{
+    isFirstLetter = true;
+    previous_x = -1;
+    previous_y = -1;
+    int x = 0;
+    int y = 0;
+
+
+    for (auto element : board.getField())
+    {
+        for (auto e : element)
+        {
+            CustomButton_Box *button = qobject_cast<CustomButton_Box*>(ui->board_gridLayout->itemAtPosition(y,x)->widget());
+            if ((board.getLetters()[y][x] != button->getLetter()) || (board.getWildcard()[y][x] != button->getIsWildcard()))
+            {
+                button->setLetter(board.getLetters()[y][x]);
+
+                if (board.getLetters()[y][x] == ' ')
+                {
+                    QString imagePath = "";
+                    switch(e)
+                    {
+                        case (Constants::EMPTY):
+                        {
+                            imagePath = ":/images/F2CC8F.png";
+                            break;
+                        }
+                        case (Constants::WORDx2):
+                        {
+                            imagePath = ":/images/2P.png";
+                            break;
+                        }
+                        case (Constants::WORDx3):
+                        {
+                            imagePath = ":/images/3P.png";
+                            break;
+                        }
+                        case (Constants::LETTERx2):
+                        {
+                            imagePath = ":/images/2L.png";
+                            break;
+                        }
+                        case (Constants::LETTERx3):
+                        {
+                            imagePath = ":/images/3L.png";
+                            break;
+                        }
+                    }
+                    setBoxImage(button, imagePath);
+                }
+                else
+                {
+                    QString imagePath = "";
+                    if (board.getWildcard()[y][x])
+                        imagePath = ":/images/Scrabble.png";
+                    else
+                    {
+                        imagePath = ":/images/";
+                        imagePath.push_back(board.getLetters()[y][x]);
+                        imagePath.push_back(".png");
+                    }
+                    setBoxImage(button, imagePath);
+                }
+            }
+
+            if (button->getLetter() == ' ')
+                button->setEnabled(true);
+            else
+                button->setEnabled(false);
+            if (board.getWildcard()[y][x])
+                button->setEnabled(true);
+            else
+                button->setIsWildcard(false);
+            button->setIsNew(false);
+            x++;
+        }
+        y++;
+        x = 0;
+    }
+
+    isFirstTurn = false;
+}
+
+void MainWindow::setBoxImage(CustomButton_Box *button, QString imagePath)
+{
+    QPixmap backgroundButton(imagePath);
+    backgroundButton = backgroundButton.scaled(button->size(), Qt::IgnoreAspectRatio);
+    QPalette paletteButton;
+    paletteButton.setBrush(QPalette::Button, backgroundButton);
+    button->setFlat(true);
+    button->setAutoFillBackground(true);
+    button->setPalette(paletteButton);
+}
+=======
+void on_repeatTurn_pushButton_clicked()
+{
+    if (isFirstTurn) // ako je u pitanju prvi potez, pravi se nova tabla
+    {
+        QLayoutItem* item;
+        while ((item = ui->board_gridLayout->takeAt(0)) != NULL )
+        {
+            delete item->widget();
+            delete item;
+        }
+
+        sendRepeatFirstTurn();
+    }
+    else
+    {
+        sendRepeatTurn();
+    }
+}
+
+void on_end_pushButton_clicked()
+{
+    Constants *c = new Constants();
+    //pretvaram tablu za igru u privremenu tablu (objekat) koji cemo da validiramo
+    Board tempBoard = Board();
+    vector<vector<QChar>> letters_temp;  
+    for (int y = 0; y < c->LEN_Y; y++)
+    {
+        vector<QChar> temp;
+        for (int x = 0; x < c->LEN_X; x++)
+        {
+            // prolazim kroz sva polja
+            CustomButton_box *button_box = qobject_cast<CustomButton_box*>(ui->board_gridLayout->itemAtPosition(y,x)->widget());
+            temp.push_back(button_box->getLetter());
+            if (button_box->getIsNew())     		     // ako je u ovom potezu dodato slovo, cuvamo info na pravoj tabli
+                tempBoard.setNewLetterValue(true,x,y);       
+
+            if (button_box->getIsWildcard())                 // ako je slovo dzoker, cuvamo info na pravoj tabli
+                tempBoard.setWildcard(true,x,y);             
+
+        }
+        letters_temp.push_back(temp);
+    }
+    tempBoard.setLetters(letters_temp);        // dodajemo ova slova originalnoj tabli
+
+    sendEnd(tempBoard);       		       // saljemo signal za kraj
+}
+
+void on_suggest_pushButton_clicked()
+{
+    sendRequestSuggestion();
+}
+
+bool getIsFirstLetter()
+{
+    return isFirstLetter;
+}
+
+void setIsFirstLetter(bool value)
+{
+    isFirstLetter = value;
+}
+
+>>>>>>> develop_Jelena

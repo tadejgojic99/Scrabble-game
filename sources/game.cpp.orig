@@ -1,0 +1,401 @@
+#include "headers/game.h"
+#include "headers/board.h"
+
+Game::Game(QObject *parent) : QObject(parent)
+{
+    currentPlayer = 0;      // uvek ce igrac 1 biti prvi na potezu, posto se ovo igra na lokalu, nebitno je ko je(oznacicu sa 0, zbog vektora players)
+    deck.shuffleDeck();     // neka see spiil mesa pri pokretanju svake igre, barem za sada
+}
+
+int Game::getNumberOfPlayers() const
+{
+    return numberOfPlayers;
+}
+
+void Game::setNumberOfPlayers(int &value)
+{
+    numberOfPlayers = value;
+}
+
+Deck Game::getDeck() const
+{
+    return deck;
+}
+
+void Game::setDeck(Deck &value)
+{
+    deck = value;
+}
+
+std::vector<Player> Game::getPlayers() const
+{
+    return players;
+}
+
+void Game::setPlayers(std::vector<Player> &value)
+{
+    players = value;
+}
+
+ScoreBoard Game::getMyScoreBoard() const
+{
+    return myBoard;
+}
+
+void Game::setMyScoreBoard(const ScoreBoard &value)
+{
+    myBoard = value;
+}
+
+void Game::nextPlayer() //sledeci igrac
+{
+    // provera da li je trenutni igrac poslednji
+    if (currentPlayer == numberOfPlayers-1)
+        currentPlayer = 0;      // trenutni igrac postaje prvi
+    else
+        currentPlayer ++;       // trenutni igrac postaje sledeci
+}
+
+void Game::start()
+{
+    createScoreboard(myBoard);
+    sendPlayer(players[currentPlayer]);
+}
+
+void Game::manageCards()
+{
+    QString hand = players[currentPlayer].getHand();
+    // kontrolisemo svako polje na tabli
+    for (int y = 0; y < l.LEN_Y; y++)
+    {
+        for (int x = 0; x < l.LEN_X; x++)
+        {
+            // provera da li je slovo novo
+            if (myBoard.getNewLetters()[y][x])
+            {
+                if (myBoard.getWildcard()[y][x])        // provera da li je u pitanju dzoker
+                    hand.remove(hand.indexOf('*'),1);
+                else
+                    hand.remove(hand.indexOf(myBoard.getLetters()[y][x]),1);    // uklanjamo slovo
+            }
+        }
+    }
+    players[currentPlayer].setHand(hand);    // slazemo karte u ruci igraca
+    while (!(deck.isEmpty()) && (players[currentPlayer].getHand().length() < l.HAND_SIZE)) // ako kartice sa slovima nisu potrosene i ukoliko igrac nema dovoljno kartica sa slovima
+        players[currentPlayer].addCard(deck.getTopCard()); // igrac izvlaci kartu
+}
+
+
+
+void Game::receiveNumberOfPlayers(int number)
+{
+    numberOfPlayers = number;
+
+    for (int i = 0; i < numberOfPlayers; ++i) {
+        Player player;
+        player.setName("Player " + QString::number(i + 1));   // iz nekog razloga parametar u Player::setName mora biti const
+
+        // za svakog od njih se iz spila izvlace karte
+        for (int j = 0; j < Constants::Values::HAND_SIZE; ++j) {
+            // TODO: metod u klasi Player za dodavanje karte
+        }
+
+        players.push_back(player);
+    }
+}
+
+<<<<<<< HEAD
+=======
+void Game::recieveRepeatTurn()
+{
+    sendScoreboard(myBoard);
+    sendPlayer(players[currentPlayer]);
+}
+
+void Game::recieveRepeatFirstTurn()
+
+{
+    setMyScoreBoard(myBoard);
+    sendPlayer(players[currentPlayer]);
+}
+
+void Game::recieveUpdate(ScoreBoard tempScoreBoard, QString cards)
+{
+    myBoard.setLetters(tempScoreBoard.getLetters());
+    myBoard.setNewLetters(tempScoreBoard.getNewLetters());
+    myBoard.setWildcard(tempScoreBoard.getWildcard());
+    players[currentPlayer].setHand(cards);
+
+    sendScoreboard(myBoard);
+    sendPlayer(players[currentPlayer]);
+}
+
+void Game::calculateTip()
+{
+    int line = -1;
+    int column = -1;
+    int score = 0;
+    string word = "";
+    QMessageBox msgBox;
+    string msg_text;
+
+    // horizontalna provera
+    for (int r = 0; r < Constants::LEN_Y; r++)
+    {
+        bool test = false;
+        for(int c = 0; c < Constants::LEN_X; c++)     // provera da li postoji bar 1 slovo u liniji
+        {
+            if (myBoard.getLetters()[r][c] != ' ' )
+                test = true;
+        }
+        if (test) // ako nema cak ni slovo u liniji, ne proveravamo nista u toj liniji
+        {
+            string temp_rack = players[currentPlayer].getHand().toStdString();    // oporavljamo ruku igraca
+            string rack;
+
+            for (size_t i = 0; i < temp_rack.length(); i++)
+                if (temp_rack.at(i) != '*')
+                    rack.push_back(temp_rack.at(i));
+
+            for (int c = 0; c < Constants::LEN_X; c++)
+                if (myBoard.getLetters()[r][c] != ' ')          // cim pronadjemo slovo
+                    rack += myBoard.getLetters()[r][c].toLatin1();   // dodajemo to slovo
+
+            unordered_map<char, int> choice;
+            for(size_t i = 0; i < rack.length(); i++){
+                if(choice.find(rack[i]) == choice.end())
+                    choice[toupper(rack[i])] = 0;
+                choice[toupper(rack[i])]++;
+            }
+
+            vector<string> found_words;
+            string word;
+            constructWords(choice, word, found_words);  // trazimo sve moguce reci
+
+            for(auto it = found_words.begin(); it != found_words.end(); it++) // prelistavamo sve pronadjene reci
+            {
+                if (it->length() < 4)     // reci krace od 4 slova se ne razmatraju
+                    continue;
+                if (!(it->length() > Constants::LEN_X))         // proveravamo da rec nije preduga
+                {
+                    for (size_t c = 0; c < (Constants::LEN_X - it->length()); c++)      // za svaku rec pokusavamo da je stavimo na svako polje reda
+                    {
+                        test = true;
+                        bool flag = false;
+                        bool flag2 = false;
+                        bool flag3 = true;
+                        string hand = players[currentPlayer].getHand().toStdString();
+                        for (size_t i = 0; i < it->length(); i++)     // kontrolisemo poziciju svakog slova na tabli
+                        {
+                            if ((it->at(i) != myBoard.getLetters()[r][c+i]) && (myBoard.getLetters()[r][c+i] != ' ')) // ako postoji neka nepravilnost
+                                test = false;       // onda se rec ne racuna
+                            if(it->at(i) == myBoard.getLetters()[r][c+i])   // provera da li se poklapa sa vec nekim slovom na tabli
+                                flag = true;
+                            if (test && (myBoard.getLetters()[r][c+i] == ' '))
+                                flag2 = true;
+                            if (test && ((myBoard.getLetters()[r][c+i] == ' ') && (hand.find(it->at(i)) == string::npos)))   // provera da li su postavljena slova uzeta samo iz ruke igraca
+                                flag3 = false;
+                            else if ((myBoard.getLetters()[r][c+i] == ' ') && (hand.find(it->at(i)) != string::npos))
+                                hand.erase(hand.find(it->at(i)));
+                        }
+                        if (test && flag && flag2 && flag3)   // ako mozemo da nastavimo, proveravamo rezultat reci
+                        {
+                            ScoreBoard tempScoreBoard = ScoreBoard();
+                            tempScoreBoard.setLetters(myBoard.getLetters());
+                            for (size_t i = 0; i < it->length(); i++)   // dodajemo novu rec
+                            {
+                                if (myBoard.getLetters()[r][c+i] == ' ')
+                                {
+                                    tempScoreBoard.setLetterValue(it->at(i),c+i,r);
+                                    tempScoreBoard.setNewLetterValue(true,c+i,r);
+                                }
+                            }
+                            if (validation(tempScoreBoard,false))
+                            {
+                                if(tempScoreBoard.calculateScore() > score)    // provera da li je rezultat veci od prethodnog
+                                {
+                                    score = tempScoreBoard.calculateScore();
+                                    word = *it;
+                                    column = c;
+                                    line = r;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // saopstavamo rezultat
+    msgBox.setWindowTitle("Horizontally");
+    if (word != "")
+        msg_text = " Found word: " + word + "\n score: " + to_string(score) + "\n line: " + to_string(line) + "\n column: " + to_string(column);
+    else
+        msg_text = "Not found a horizontal word, longer than 3 characters!";
+    QString pom = QString::fromStdString(msg_text);
+    msgBox.setText(pom);
+    msgBox.exec();
+
+    word = "";
+    line = -1;
+    column = -1;
+    score = 0;
+    for (int c = 0; c < Constants::LEN_X; c++)
+    {
+        bool test = false;
+        for(int r = 0; r < Constants::LEN_X; r++)     // provera da li postoji bar 1 slovo u koloni
+        {
+            if (myBoard.getLetters()[r][c] != ' ' )
+                test = true;
+        }
+        if (test)
+        {
+            string temp_rack = players[currentPlayer].getHand().toStdString();    // oporavljamo ruku igraca
+            string rack;
+
+            for (size_t i = 0; i < temp_rack.length(); i++)
+                if (temp_rack.at(i) != '*')
+                    rack.push_back(temp_rack.at(i));
+
+            for (int r = 0; r < Constants::LEN_Y; r++)
+                if (myBoard.getLetters()[r][c] != ' ')
+                    rack += myBoard.getLetters()[r][c].toLatin1();
+
+            unordered_map<char, int> choice;
+            for(size_t i = 0; i < rack.length(); i++){
+                if(choice.find(rack[i]) == choice.end())
+                    choice[toupper(rack[i])] = 0;
+                choice[toupper(rack[i])]++;
+            }
+
+            vector<string> found_words;
+            string word;
+            constructWords(choice, word, found_words);
+
+            for(auto it = found_words.begin(); it != found_words.end(); it++)
+            {
+                if (it->length() < 3)
+                    continue;
+                if (!(it->length() > Constants::LEN_Y))
+                {
+                    for (size_t r = 0; r < (Constants::LEN_Y - it->length()); r++)
+                    {
+                        test = true;
+                        bool flag = false;
+                        bool flag2 = false;
+                        bool flag3 = true;
+                        string hand = players[currentPlayer].getHand().toStdString();
+                        for (size_t i = 0; i < it->length(); i++)
+                        {
+                            if ((it->at(i) != myBoard.getLetters()[r+i][c]) && (myBoard.getLetters()[r+i][c] != ' '))
+                                test = false;
+                            if(it->at(i) == myBoard.getLetters()[r+i][c])
+                                flag = true;
+                            if (test && (myBoard.getLetters()[r+i][c] == ' '))
+                                flag2 = true;
+                            if (test && ((myBoard.getLetters()[r+i][c] == ' ') && (hand.find(it->at(i)) == string::npos)))
+                                flag3 = false;
+                            else if ((myBoard.getLetters()[r+i][c] == ' ') && (hand.find(it->at(i)) != string::npos))
+                                hand.erase(hand.find(it->at(i)));
+                        }
+                        if (test && flag && flag2 && flag3)
+                        {
+                            ScoreBoard tempScoreBoard = ScoreBoard();
+                            tempScoreBoard.setLetters(myBoard.getLetters());
+                            for (size_t i = 0; i < it->length(); i++)
+                            {
+                                if (myBoard.getLetters()[r+i][c] == ' ')
+                                {
+                                    tempScoreBoard.setLetterValue(it->at(i),c,r+i);
+                                    tempScoreBoard.setNewLetterValue(true,c,r+i);
+                                }
+                            }
+                            if (validation(tempScoreBoard,false))
+                            {
+                                if(tempScoreBoard.calculateScore() > score)
+                                {
+                                    score = tempScoreBoard.calculateScore();
+                                    word = *it;
+                                    column = c;
+                                    line = r;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    msgBox.setWindowTitle("Vertically");
+    if (word != "")
+        msg_text = " Found word: " + word + "\n score: " + to_string(score) + "\n line: " + to_string(line) + "\n column: " + to_string(column);
+    else
+        msg_text = "Not found a horizontal word, longer than 3 characters!";
+    pom = QString::fromStdString(msg_text);
+    msgBox.setText(pom);
+    msgBox.exec();
+}
+
+>>>>>>> develop_Milica
+
+void Game::victory()
+{
+    Constants* constants = new Constants();
+    // igracu koji je odigrao sve karte dodajemo vrednosti preostalih karata u rukama protivnika
+    for (int i = 0; i < numberOfPlayers; i++)
+    {
+        if (i != currentPlayer)
+        {
+            for (int x = 0; x < players[i].getHand().length(); x++)   // za svako slovo u rukama ostalih igraca
+                if (players[i].getHand().at(x) != '*') {  // Wild card nije primenjen pa ga ne uracunavamo
+                    int tmp = players[i].getHand().at(x).unicode() - 'A';
+                    int tmpScore = players[currentPlayer].getScore();
+                    int scoreSet = tmpScore + tmp;
+                    players[currentPlayer].setScore(scoreSet);    // sabiramo rezultat igraca koji je zavrsio
+                }
+        }
+    }
+    int topPlayer = 0;  // pocinjemo s prvim igracem
+    for (int i = 1; i < numberOfPlayers; i++)
+    {
+        if (players[topPlayer].getScore() < players[i].getScore())
+            topPlayer = i;  // ako nadjemo boljeg igraca azuriramo indeks
+    }
+    //TODO dorada prosledjivanja
+}
+
+
+<<<<<<< HEAD
+
+=======
+>>>>>>> develop_Milica
+void Game::constructWords(std::unordered_map<char, int> &choice, std::string &curWord, std::vector<std::string > &words)
+{
+    for(auto it = choice.begin(); it != choice.end(); it++){
+        if(it->second <= 0)     // ako se karakter pojavljuje <=0 puta, tj ne pojavljuje se, nastaviti
+<<<<<<< HEAD
+            continue;          
+=======
+            continue;
+>>>>>>> develop_Milica
+
+        curWord += it->first;   // trenutnoj reci dodajemo tekuci karakter
+        it->second--;           // posto je karakter iskoriscen smanjujemo broj pojavljivanja
+        if(myDictionary.contains(curWord))          // proveravamo da li tekuca rec postoji u recniku
+            words.push_back(curWord);     // ukoliko postoji dodajemo je u vektor reci
+        if (!(myDictionary.noSuccessor(curWord)))     // ako iz te reci ne postoji nastavak, nema poente proveravati dalje
+            constructWords(choice, curWord, words);               // rekurzivno pozivamo funkciju da bismo mogli da proverimo sve moguce kombinacije sa nasim slovima
+
+        choice[curWord.back()]++;   // povecavamo brojac pojavljivanja poslednjeg iskoriscenog karaktera, da bismo se vratili na pocetno stanje
+        curWord.pop_back();         // uklanjamo poslednji karakter iz tekuce reci da bismo se vratili na pocetno stanje
+    }
+}
+<<<<<<< HEAD
+=======
+
+
+
+>>>>>>> develop_Milica

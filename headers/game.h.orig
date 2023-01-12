@@ -1,0 +1,77 @@
+#ifndef GAME_H
+#define GAME_H
+
+#include <QObject>
+#include <vector>
+#include "headers/deck.h"
+#include "headers/player.h"
+#include "headers/constants.h"
+#include "headers/dictionary.h"
+#include "headers/board.h"
+
+class Game : public QObject // da bi signali i slotovi mogli da se povezu, mora da nasledjuje klasu QObject
+{
+    Q_OBJECT
+
+public:
+    explicit Game(QObject *parent = 0);
+
+    // TODO: metod za pokretanje partije, pravljenje table, racunanje rezultata i sta vec bude bilo potrebno
+    void start();
+    void nextPlayer();
+    void manageCards();
+<<<<<<< HEAD
+    void calculateTip();
+=======
+>>>>>>> develop_Nikola
+    bool validation(ScoreBoard tempScoreBoard, bool inform);
+    //  getter-i i setter-i
+    int getNumberOfPlayers() const;
+    void setNumberOfPlayers(int &value);
+
+    ScoreBoard getMyScoreBoard() const;
+    void setMyScoreBoard(const ScoreBoard &value);
+
+    Deck getDeck() const;
+    void setDeck(Deck &value);
+
+    std::vector<Player> getPlayers() const;
+    void setPlayers(std::vector<Player> &value);
+    // TODO: getter i setter za tablu na kojoj se igra
+    void victory();
+    void constructWords(std::unordered_map<char, int> &choice, std::string &curWord, std::vector<std::string > &words);
+
+// ovde treba lepo razgraniciti sta salje igra u mainwindow, za sada neka bude signal za kraj igre
+//signals:
+//    void sendEndGame(Player p);
+signals:
+    void createScoreboard(ScoreBoard myBoard);
+    void sendScoreboard(ScoreBoard myBoard);
+    void sendPlayer(Player player);
+
+public slots:
+    void receiveNumberOfPlayers(int number);
+    void recieveRepeatTurn();
+    void recieveRepeatFirstTurn();
+<<<<<<< HEAD
+    void recieveUpdate(ScoreBoard tempScoreBoard, QString cards);
+//    void receiveSuggestion();
+//    void receiveEndTurn();
+//    void receiveRepeatTurn(bool firstTurn);  // posto je prvi potez specifican, neka se za sada prima indikator prvog poteza
+
+=======
+//    void receiveSuggestion();
+    void recieveEndTurn(ScoreBoard tempScoreBoard);
+>>>>>>> develop_Nikola
+
+private:
+    std::vector<Player> players;
+    Deck deck;
+    int numberOfPlayers;
+    int currentPlayer;
+    Dictionary myDictionary = Dictionary("../resources/dictionary/dictionary.txt");
+    ScoreBoard myBoard;
+    Constants l;
+};
+
+#endif // GAME_H

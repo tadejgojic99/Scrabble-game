@@ -1,0 +1,46 @@
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+
+#include <QMainWindow>
+<<<<<<< HEAD
+#include "headers/board.h"
+=======
+#include "../headers/player.h"
+
+>>>>>>> develop_Tadej
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
+
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
+
+<<<<<<< HEAD
+    void setBoxImage(CustomButton_Box *button, QString imagePath);
+
+public slots:
+    void createBoard(Board myBoard);
+    void receiveBoard(Board board);
+private:
+    Ui::MainWindow *ui;
+    bool isFirstLetter;    // da li prvo slovo u rundi treba da se ubaci
+    bool isFirstTurn;      // da li je prva runda u partiji
+    int previous_x;         // koordinate ubacenog slova
+    int previous_y;
+=======
+public slots:
+    void receivePlayer(Player myPlayer);
+
+
+private:
+    Ui::MainWindow *ui;
+
+    void setCardImage(CustomButton_Card *button, QString imagePath);
+>>>>>>> develop_Tadej
+};
+#endif // MAINWINDOW_H
